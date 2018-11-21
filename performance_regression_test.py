@@ -406,22 +406,22 @@ class PerformanceRegressionTest(ClusterTester):
 
         time.sleep(600)
 
+        # Run READ workload
+        self.create_test_stats(sub_type='read')
+        stress_queue = self.run_stress_thread(stress_cmd=base_cmd_r, stress_num=1, stats_aggregate_cmds=False)
+        results = self.get_stress_results(queue=stress_queue)
+        self.update_test_details()
+        self.display_results(results, test_name='test_latency')
+        self.check_regression()
+
+        time.sleep(600)
+
         # Run WRITE workload
         self.create_test_stats(sub_type='write')
         stress_queue = self.run_stress_thread(stress_cmd=base_cmd_w, stress_num=1, stats_aggregate_cmds=False)
         results = self.get_stress_results(queue=stress_queue)
         self.update_test_details()
         # TEMP check if possible
-        self.display_results(results, test_name='test_latency')
-        self.check_regression()
-
-        time.sleep(600)
-
-        # Run READ workload
-        self.create_test_stats(sub_type='read')
-        stress_queue = self.run_stress_thread(stress_cmd=base_cmd_r, stress_num=1, stats_aggregate_cmds=False)
-        results = self.get_stress_results(queue=stress_queue)
-        self.update_test_details()
         self.display_results(results, test_name='test_latency')
         self.check_regression()
 
