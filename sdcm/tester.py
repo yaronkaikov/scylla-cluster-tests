@@ -23,6 +23,7 @@ import boto3.session
 import libvirt
 import requests
 from avocado import Test
+from avocado.utils.process import CmdError
 from cassandra import ConsistencyLevel
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.cluster import Cluster as ClusterDriver
@@ -54,6 +55,8 @@ from .utils import get_data_dir_path, log_run_info
 from . import docker
 from . import cluster_baremetal
 from . import db_stats
+from sdcm.db_stats import PrometheusDBStats
+from results_analyze import PerformanceResultsAnalyzer
 
 try:
     from botocore.vendored.requests.packages.urllib3.contrib.pyopenssl import extract_from_urllib3
@@ -1096,3 +1099,73 @@ class ClusterTester(db_stats.TestStatsMixin, Test):
         cql_cmd = "ALTER table {key_space_name}.{table_name} " \
                   "WITH in_memory=true AND compaction={compaction_strategy}".format(**locals())
         node.remoter.run('cqlsh -e "{}" {}'.format(cql_cmd, node.private_ip_address), verbose=True)
+
+    def get_num_of_hint_files(self, node):
+        result = node.remoter.run("sudo find {0.scylla_hints_dir} -name *.log -type f| wc -l".format(self),
+                                  verbose=True)
+        total_hint_files = int(result.stdout.strip())
+        self.log.debug("Number of hint files on '%s': %s." % (node.name, total_hint_files))
+        return total_hint_files
+
+    def get_num_shards(self, node):
+        result = node.remoter.run("sudo ls -1 {0.scylla_hints_dir}| wc -l".format(self), verbose=True)
+        return int(result.stdout.strip())
+
+    @retrying(n=3, sleep_time=15, allowed_exceptions=(AssertionError,))
+    def hints_sending_in_progress(self):
+        q = "sum(rate(scylla_hints_manager_sent{}[15s]))"
+        now = time.time()
+        # check status of sending hints during last minute range
+        results = self.prometheusDB.query(query=q, start=now - 60, end=now)
+        self.log.debug("scylla_hints_manager_sent: %s" % results)
+        assert results, "No results from Prometheus"
+        # if all are zeros the result will be False, otherwise we are still sending
+        return any([float(v[1]) for v in results[0]["values"]])
+
+    @retrying(n=30, sleep_time=60, allowed_exceptions=(AssertionError, CmdError))
+    def wait_for_hints_to_be_sent(self, node, num_dest_nodes):
+        num_shards = self.get_num_shards(node)
+        hints_after_send_completed = num_shards * num_dest_nodes
+        # after hints were sent to all nodes, the number of files should be 1 per shard per destination
+        assert self.get_num_of_hint_files(node) <= hints_after_send_completed, "Waiting until the number of hint files " \
+                                                                        "will be %s." % hints_after_send_completed
+        assert self.hints_sending_in_progress() is False, "Waiting until Prometheus hints counter will not change"
+
+    def verify_no_drops_and_errors(self, starting_from):
+        q_dropped = "sum(rate(scylla_hints_manager_dropped{}[15s]))"
+        q_errors = "sum(rate(scylla_hints_manager_errors{}[15s]))"
+        queries_to_check = [q_dropped, q_errors]
+        for q in queries_to_check:
+            results = self.prometheusDB.query(query=q, start=starting_from, end=time.time())
+            err_msg = "There were hint manager %s detected during the test!" % "drops" if "dropped" in q else "errors"
+            assert any([float(v[1]) for v in results[0]["values"]]) is False, err_msg
+
+    def get_data_set_size(self, cs_cmd):
+        """:returns value of n in stress comand, that is approximation and currently doesn't take in consideration
+            column size definitions if they present in the command
+        """
+        try:
+            return int(re.search("n=(\d+) ", cs_cmd).group(1))
+        except Exception:
+            self.fail("Unable to get data set size from cassandra-stress command: %s" % cs_cmd)
+
+    @retrying(n=60, sleep_time=60, allowed_exceptions=(AssertionError,))
+    def wait_data_dir_reaching(self, size, node):
+        q = '(sum(node_filesystem_size{{mountpoint="{0.scylla_dir}", ' \
+            'instance=~"{1.private_ip_address}"}})-sum(node_filesystem_avail{{mountpoint="{0.scylla_dir}", ' \
+            'instance=~"{1.private_ip_address}"}}))'.format(self, node)
+        res = self.prometheusDB.query(query=q, start=time.time(), end=time.time())
+        assert res, "No results from Prometheus"
+        used = int(res[0]["values"][0][1]) / (2 ** 10)
+        assert used >= size, "Waiting for Scylla data dir to reach '{size}', " \
+                             "current size is: '{used}'".format(**locals())
+
+    def check_regression(self):
+        ra = PerformanceResultsAnalyzer(es_index=self._test_index, es_doc_type=self._es_doc_type,
+                             send_email=self.params.get('send_email', default=True),
+                             email_recipients=self.params.get('email_recipients', default=None))
+        is_gce = True if self.params.get('cluster_backend') == 'gce' else False
+        try:
+            ra.check_regression(self._test_id, is_gce)
+        except Exception as ex:
+            self.log.exception('Failed to check regression: %s', ex)
