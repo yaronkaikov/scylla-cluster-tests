@@ -51,7 +51,7 @@ from .cluster_aws import CassandraAWSCluster
 from .cluster_aws import ScyllaAWSCluster
 from .cluster_aws import LoaderSetAWS
 from .cluster_aws import MonitorSetAWS
-from .utils import get_data_dir_path, log_run_info
+from .utils import get_data_dir_path, log_run_info, retrying
 from . import docker
 from . import cluster_baremetal
 from . import db_stats
