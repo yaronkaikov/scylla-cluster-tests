@@ -35,14 +35,11 @@ backends: !mux
             ami_loader_user: 'centos'
             ami_id_db_cassandra: 'ami-ada2b6c4'
             ami_db_cassandra_user: 'ubuntu'
-            ami_id_monitor: 'ami-9887c6e7' # Clean CentOs 7 ami
-            ami_monitor_user: 'centos'
+            ami_id_monitor: 'ami-cb4b94dd' # Clean Debian-8 ami
+            ami_monitor_user: 'admin'
     gce: !mux
         cluster_backend: 'gce'
         user_credentials_path: '~/.ssh/scylla-test'
-        gce_user_credentials: '~/Scylla-c41b78923a54.json'
-        gce_service_account_email: 'skilled-adapter-452@appspot.gserviceaccount.com'
-        gce_project: 'skilled-adapter-452'
         gce_image: 'https://www.googleapis.com/compute/v1/projects/centos-cloud/global/images/family/centos-7'
         gce_image_username: 'scylla-test'
         gce_instance_type_db: 'n1-highmem-8'
