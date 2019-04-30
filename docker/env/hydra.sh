@@ -36,6 +36,10 @@ fi
 # Check for SSH keys
 ${SCT_DIR}/get-qa-ssh-keys.sh
 
+# export all AWS_* env vars into the docker run
+AWS_OPTIONS=$(env | grep AWS_ | cut -d "=" -f 1 | xargs -i echo "--env {}")
+
+
 docker run --rm ${TTY_STDIN} --privileged \
     -h SCT-CONTAINER \
     -v /var/run:/run \
@@ -47,6 +51,7 @@ docker run --rm ${TTY_STDIN} --privileged \
     -w ${WORK_DIR} \
     -e JOB_NAME=${JOB_NAME} \
     -e BUILD_URL=${BUILD_URL} \
+    ${AWS_OPTIONS} \
     --net=host \
     scylladb/hydra:v${VERSION} \
     /bin/bash -c "/usr/libexec/postfix/master -w; ${TERM_SET_SIZE} eval ${CMD}"
