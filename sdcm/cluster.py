@@ -1477,6 +1477,10 @@ server_encryption_options:
         if self.replacement_node_ip:
             logger.debug("%s is a replacement node for '%s'." % (self.name, self.replacement_node_ip))
             scylla_yaml_contents += "\nreplace_address_first_boot: %s\n" % self.replacement_node_ip
+        else:
+            pattern = re.compile('^replace_address_first_boot:')
+            scylla_yaml_contents = pattern.sub('# replace_address_first_boot:',
+                                               scylla_yaml_contents)
 
         if append_conf:
             scylla_yaml_contents += append_conf
@@ -2882,6 +2886,7 @@ class BaseScyllaCluster(object):
 
         node.wait_db_up(timeout=timeout)
         node.wait_jmx_up()
+        self.clean_replacement_node_ip(node, seed_address, endpoint_snitch)
 
     def clean_replacement_node_ip(self, node, seed_address, endpoint_snitch):
         if node.replacement_node_ip:
