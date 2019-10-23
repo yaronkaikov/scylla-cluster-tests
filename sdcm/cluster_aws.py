@@ -3,6 +3,8 @@ import time
 import uuid
 import os
 import tempfile
+from distutils.version import LooseVersion  # pylint: disable=no-name-in-module,import-error
+
 import yaml
 import getpass
 
@@ -14,7 +16,7 @@ from threading import Thread
 
 import cluster
 import ec2_client
-from sdcm.utils import retrying, list_instances_aws
+from sdcm.utils import retrying, list_instances_aws, get_ami_tags
 from sdcm.sct_events import SpotTerminationEvent
 from . import wait
 
@@ -272,6 +274,10 @@ class AWSCluster(cluster.BaseCluster):
         """
         Update --bootstrap argument inside ec2_user_data string.
         """
+        if isinstance(ec2_user_data, dict):
+            ec2_user_data['scylla_yaml']['auto_bootstrap'] = enable_auto_bootstrap
+            return ec2_user_data
+
         if enable_auto_bootstrap:
             if '--bootstrap ' in ec2_user_data:
                 ec2_user_data.replace('--bootstrap false', '--bootstrap true')
@@ -527,10 +533,16 @@ class ScyllaAWSCluster(cluster.BaseScyllaCluster, AWSCluster):
         node_type = 'syclla-db'
         shortid = str(cluster_uuid)[:8]
         name = '%s-%s' % (cluster_prefix, shortid)
-        user_data = ('--clustername %s '
-                     '--totalnodes %s' % (name, sum(n_nodes)))
-        if params.get('stop_service', default='true') == 'true':
+
+        scylla_cloud_image_version = get_ami_tags(ec2_ami_id[0], region_name=params.get(
+            'region_name').split()[0]).get('sci_version', '1')
+        if LooseVersion(scylla_cloud_image_version) >= LooseVersion('2'):
+            user_data = dict(scylla_yaml=dict(cluster_name=name), start_scylla_on_first_boot=False)
+        else:
+            user_data = ('--clustername %s '
+                         '--totalnodes %s' % (name, sum(n_nodes)))
             user_data += ' --stop-services'
+
         super(ScyllaAWSCluster, self).__init__(ec2_ami_id=ec2_ami_id,
                                                ec2_subnet_id=ec2_subnet_id,
                                                ec2_security_group_ids=ec2_security_group_ids,
@@ -555,7 +567,7 @@ class ScyllaAWSCluster(cluster.BaseScyllaCluster, AWSCluster):
                 ec2_user_data = self._ec2_user_data
             else:
                 ec2_user_data = ('--clustername %s --totalnodes %s ' % (self.name, count))
-        if self.nodes:
+        if self.nodes and isinstance(ec2_user_data, str):
             node_ips = [node.ip_address for node in self.nodes if node.is_seed]
             seeds = ",".join(node_ips)
 

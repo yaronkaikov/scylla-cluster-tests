@@ -467,3 +467,17 @@ def safe_kill(pid, signal):
         return True
     except Exception:
         return False
+
+
+def get_ami_tags(ami_id, region_name):
+    """
+    Get a list of tags of a specific AMI
+
+    :param ami_id:
+    :param region_name: the region to look AMIs in
+    :return: dict of tags
+    """
+    ec2 = boto3.resource('ec2', region_name=region_name)
+    test_image = ec2.Image(ami_id)
+
+    return {i['Key']: i['Value'] for i in test_image.tags}
