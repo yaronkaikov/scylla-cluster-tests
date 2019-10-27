@@ -1943,12 +1943,12 @@ server_encryption_options:
         SCYLLA_YAML_PATH_TMP = "/tmp/scylla.yaml"
         self.remoter.run("sudo cat {} | grep -v '<client_encrypt>' > {}".format(SCYLLA_YAML_PATH, SCYLLA_YAML_PATH_TMP))
         self.remoter.run("sudo mv -f {} {}".format(SCYLLA_YAML_PATH_TMP, SCYLLA_YAML_PATH))
-        self.config_setup(client_encrypt=True)
+        self.parent_cluster.node_config_setup(node=self, client_encrypt=True)
         self.stop_scylla()
         self.start_scylla()
 
     def disable_client_encrypt(self):
-        self.config_setup(client_encrypt=False)
+        self.parent_cluster.node_config_setup(node=self, client_encrypt=False)
         self.stop_scylla()
         self.start_scylla()
 
@@ -2015,7 +2015,8 @@ server_encryption_options:
     def restart_node_with_resharding(self, murmur3_partitioner_ignore_msb_bits=12):
         self.stop_scylla()
         # Change murmur3_partitioner_ignore_msb_bits parameter to cause resharding.
-        self.config_setup(murmur3_partitioner_ignore_msb_bits=murmur3_partitioner_ignore_msb_bits)
+        self.parent_cluster.node_config_setup(
+            node=self, murmur3_partitioner_ignore_msb_bits=murmur3_partitioner_ignore_msb_bits)
         self.start_scylla()
 
         resharding_started = wait.wait_for(func=self._resharding_status, step=5, timeout=3600,
@@ -2833,7 +2834,8 @@ class BaseScyllaCluster(object):
                           client_encrypt=self._param_enabled('client_encrypt'),
                           append_conf=self.params.get('append_conf'), append_scylla_args=self.get_scylla_args(),
                           hinted_handoff=self.params.get('hinted_handoff'),
-                          authorizer=self.params.get('authorizer'))
+                          authorizer=self.params.get('authorizer'),
+                          murmur3_partitioner_ignore_msb_bits=murmur3_partitioner_ignore_msb_bits)
 
     def node_setup(self, node, verbose=False, timeout=3600):
         """
