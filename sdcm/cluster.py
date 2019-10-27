@@ -2826,12 +2826,13 @@ class BaseScyllaCluster(object):
             nemesis_thread.join(timeout)
         self.nemesis_threads = []
 
-    def node_config_setup(self, node, seed_address, endpoint_snitch):
+    def node_config_setup(self, node, seed_address=None, endpoint_snitch=None, murmur3_partitioner_ignore_msb_bits=None, client_encrypt=None):  # pylint: disable=too-many-arguments,invalid-name
         node.config_setup(seed_address=seed_address, cluster_name=self.name,
                           enable_exp=self._param_enabled('experimental'), endpoint_snitch=endpoint_snitch,
                           authenticator=self.params.get('authenticator'),
                           server_encrypt=self._param_enabled('server_encrypt'),
-                          client_encrypt=self._param_enabled('client_encrypt'),
+                          client_encrypt=client_encrypt if client_encrypt is not None else self._param_enabled(  # pylint: disable=no-member
+                              'client_encrypt'),
                           append_conf=self.params.get('append_conf'), append_scylla_args=self.get_scylla_args(),
                           hinted_handoff=self.params.get('hinted_handoff'),
                           authorizer=self.params.get('authorizer'),
