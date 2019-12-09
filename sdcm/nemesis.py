@@ -1481,7 +1481,7 @@ class MgmtRepair(Nemesis):
 
 class AbortRepairMonkey(Nemesis):
 
-    disruptive = False
+    disruptive = True
 
     @log_time_elapsed_and_status
     def disrupt(self):
@@ -1564,7 +1564,6 @@ class NonDisruptiveMonkey(Nemesis):
         #  - RefreshBigMonkey -
         #  - NoCorruptRepairMonkey
         #  - MgmtRepair
-        #  - AbortRepairMonkey
     @log_time_elapsed_and_status
     def disrupt(self):
         disrupt_methods_list = self.get_list_of_disrupt_methods_for_nemesis_subclasses(disruptive=False)
