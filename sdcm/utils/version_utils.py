@@ -19,7 +19,8 @@ def get_branch_version(url):
 
 def get_branch_version_from_list(url):
     page = requests.get(url).text
-    list_regex = re.compile(r'deb\s\[arch=(?P<arch>.*?)\]\s(?P<url>http://downloads.scylladb.com/.*?)\s(?P<version_code_name>.*?)\s(?P<component>.*?)\n', re.DOTALL)
+    list_regex = re.compile(
+        r'deb\s+\[arch=(?P<arch>.*?)\]\s(?P<url>http.*?)\s(?P<version_code_name>.*?)\s(?P<component>.*?)\n', re.DOTALL)
     match = list_regex.search(page)
     if not match:
         raise ValueError("url isn't a correct deb list\n\turl:[{}] ".format(url))
