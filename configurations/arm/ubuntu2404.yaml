@@ -1,0 +1,8 @@
+ami_db_scylla_user: 'ubuntu'
+ami_id_db_scylla: 'ami-0a636034c582e2138'  # ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-arm64-server-20240423
+region_name: 'eu-west-1'
+instance_type_db: 'im4gn.xlarge'
+use_preinstalled_scylla: false
+# enhanced network isn't supported
+append_scylla_setup_args: ' --no-ec2-check '
+use_mgmt: false
