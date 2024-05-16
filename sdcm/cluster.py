@@ -4579,7 +4579,7 @@ class BaseScyllaCluster:  # pylint: disable=too-many-public-methods, too-many-in
                 assert int(result.stdout) == 1, "Even though Ubuntu pro is enabled, FIPS is not enabled"
                 # https://ubuntu.com/tutorials/using-the-ua-client-to-enable-fips#4-enabling-fips-crypto-modules
         node.update_repo_cache()
-        node.install_package('lsof net-tools', wait_for_package_manager=True)
+        node.install_package('lsof net-tools initramfs-tools', wait_for_package_manager=True)
         install_scylla = True
 
         if self.params.get("use_preinstalled_scylla") and node.is_scylla_installed(raise_if_not_installed=True):
