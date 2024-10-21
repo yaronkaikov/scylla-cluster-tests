@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-import sys
-import os
 import argparse
+import os
 import re
-import requests
+import sys
 
+import requests
 from github import Github
 
 try:
@@ -15,61 +15,52 @@ except KeyError:
     sys.exit(1)
 
 
-def get_parser():
+def parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--repository', type=str, default='scylladb/scylla-pkg', help='Github repository name')
-    parser.add_argument('--commit_before_merge', type=str, required=True,
-                        help='Git commit ID to start labeling from newest commit.')
-    parser.add_argument('--commit_after_merge', type=str, required=True,
-                        help='Git commit ID to end labeling at (oldest commit, exclusive).')
-    parser.add_argument('--label', type=str, default='promoted-to-master', help='Label to use')
-    parser.add_argument('--ref', type=str, required=True, help='PR target branch')
+    parser.add_argument("--repository", type=str, default="scylladb/scylla-pkg", help="Github repository name")
+    parser.add_argument("--commits", type=str, required=True, help="Range of promoted commits.")
+    parser.add_argument("--label", type=str, default="promoted-to-master", help="Label to use")
+    parser.add_argument("--ref", type=str, required=True, help="PR target branch")
     return parser.parse_args()
 
 
-def main():  # pylint: disable=too-many-locals  # noqa: PLR0914
-    args = get_parser()
-    github = Github(github_token)
-    repo = github.get_repo(args.repository, lazy=False)
-    commits = repo.compare(head=args.commit_after_merge, base=args.commit_before_merge)
+def main():
+    args = parser()
+    g = Github(github_token)
+    repo = g.get_repo(args.repository, lazy=False)
+    start_commit, end_commit = args.commits.split("..")
+    commits = repo.compare(start_commit, end_commit).commits
     processed_prs = set()
-    for commit in commits.commits:
-        search_url = 'https://api.github.com/search/issues'
+    for commit in commits:
+        search_url = f"https://api.github.com/search/issues"
         query = f"repo:{args.repository} is:pr is:merged sha:{commit.sha}"
         params = {
             "q": query,
         }
-        headers = {
-            "Authorization": f"token {github_token}",
-            "Accept": "application/vnd.github.v3+json"
-        }
+        headers = {"Authorization": f"token {github_token}", "Accept": "application/vnd.github.v3+json"}
         response = requests.get(search_url, headers=headers, params=params)
         prs = response.json().get("items", [])
-        for pr in prs:  # pylint: disable=invalid-name
-            match = re.findall(r'Parent PR: #(\d+)', pr["body"])
+        for pr in prs:
+            match = re.findall(r"Parent PR: #(\d+)", pr["body"])
             if match:
                 pr_number = int(match[0])
                 if pr_number in processed_prs:
                     continue
-                ref = re.search(r'-(\d+\.\d+|perf-v(\d+))', args.ref)
-                label_to_add = f'backport/{ref.group(1)}-done'
-                label_to_remove = f'backport/{ref.group(1)}'
-                remove_label_url = f'https://api.github.com/repos/{args.repository}/issues/{pr_number}/labels/{label_to_remove}'
-                del_data = {
-                    "labels": [f'{label_to_remove}']
-                }
+                ref = re.search(r"-(\d+\.\d+)", args.ref)
+                label_to_add = f"backport/{ref.group(1)}-done"
+                label_to_remove = f"backport/{ref.group(1)}"
+                remove_label_url = f"https://api.github.com/repos/{args.repository}/issues/{pr_number}/labels/{label_to_remove}"
+                del_data = {"labels": [f"{label_to_remove}"]}
                 response = requests.delete(remove_label_url, headers=headers, json=del_data)
                 if response.ok:
-                    print(f'Label {label_to_remove} removed successfully')
+                    print(f"Label {label_to_remove} removed successfully")
                 else:
-                    print(f'Label {label_to_remove} cant be removed')
+                    print(f"Label {label_to_remove} cant be removed")
             else:
                 pr_number = pr["number"]
                 label_to_add = args.label
-            data = {
-                "labels": [f'{label_to_add}']
-            }
-            add_label_url = f'https://api.github.com/repos/{args.repository}/issues/{pr_number}/labels'
+            data = {"labels": [f"{label_to_add}"]}
+            add_label_url = f"https://api.github.com/repos/{args.repository}/issues/{pr_number}/labels"
             response = requests.post(add_label_url, headers=headers, json=data)
             if response.ok:
                 print(f"Label added successfully to {add_label_url}")
