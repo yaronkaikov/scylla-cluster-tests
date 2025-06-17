@@ -81,9 +81,19 @@ hydra run-test artifacts_test --backend gce --config test-cases/artifacts/rhel7.
 hydra run-test artifacts_test --backend gce --config test-cases/artifacts/rhel8.yaml
 ```
 
-## Oracle Enterprise Linux 7.6
+## Rocky Linux 9
 ```sh
-hydra run-test artifacts_test --backend aws --config test-cases/artifacts/oel76.yaml
+hydra run-test artifacts_test --backend gce --config test-cases/artifacts/rocky9.yaml
+```
+
+## Rocky Linux 10
+```sh
+hydra run-test artifacts_test --backend gce --config test-cases/artifacts/rocky10.yaml
+```
+
+## Rocky Linux 10 (SELinux)
+```sh
+hydra run-test artifacts_test --backend gce --config test-cases/artifacts/rocky10-selinux.yaml
 ```
 
 

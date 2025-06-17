@@ -263,6 +263,24 @@ ROCKY_SUPPORT_PRODUCT_VERSION="9.0"
 REDHAT_SUPPORT_PRODUCT="Rocky Linux"
 REDHAT_SUPPORT_PRODUCT_VERSION="9.0"
 """,
+    "Rocky Linux 10": """\
+NAME="Rocky Linux"
+VERSION="10.0 (Red Quartz)"
+ID="rocky"
+ID_LIKE="rhel centos fedora"
+VERSION_ID="10.0"
+PLATFORM_ID="platform:el10"
+PRETTY_NAME="Rocky Linux 10.0 (Red Quartz)"
+ANSI_COLOR="0;32"
+LOGO="fedora-logo-icon"
+CPE_NAME="cpe:/o:rocky:rocky:10::baseos"
+HOME_URL="https://rockylinux.org/"
+BUG_REPORT_URL="https://bugs.rockylinux.org/"
+ROCKY_SUPPORT_PRODUCT="Rocky-Linux-10"
+ROCKY_SUPPORT_PRODUCT_VERSION="10.0"
+REDHAT_SUPPORT_PRODUCT="Rocky Linux"
+REDHAT_SUPPORT_PRODUCT_VERSION="10.0"
+""",
 
     "Unknown": """\
 ID=sillylinux
@@ -364,6 +382,12 @@ class TestDistro(unittest.TestCase):
         self.assertTrue(Distro.ROCKY9.is_rocky9)
         distro = Distro.from_os_release(DISTROS_OS_RELEASE["Rocky Linux 9"])
         self.assertTrue(distro.is_rocky9)
+        self.assertTrue(distro.is_rhel_like)
+
+    def test_rocky10(self):
+        self.assertTrue(Distro.ROCKY10.is_rocky10)
+        distro = Distro.from_os_release(DISTROS_OS_RELEASE["Rocky Linux 10"])
+        self.assertTrue(distro.is_rocky10)
         self.assertTrue(distro.is_rhel_like)
 
     def test_parsing_error(self):
