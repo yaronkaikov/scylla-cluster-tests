@@ -102,6 +102,9 @@ class DockerNode(cluster.BaseNode, NodeContainerMixin):
     def wait_for_cloud_init(self):
         pass
 
+    def set_hostname(self):
+        pass
+
     def wait_ssh_up(self, verbose=True, timeout=500):
         pass
 
